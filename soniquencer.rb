@@ -6,8 +6,8 @@ Sample = Struct.new(
   :sample_idx,
 :sample_defaults, keyword_init: true) do
 
-  SampleStep = Struct.new(:triggers, :amps, :rates, :ons, keyword_init: true)
-  SampleDefaults = Struct.new(:amp, :rate, :on, keyword_init: true)
+  SampleStep = Struct.new(:triggers, :ons, :properties, keyword_init: true)
+  SampleDefaults = Struct.new(:on, :properties, keyword_init: true)
 
   SampleContext = Struct.new(:trigger_idx, :step, :factor)
 
@@ -15,6 +15,12 @@ Sample = Struct.new(
     result = self.sample_defaults;
     if result == nil
       result = SampleDefaults.new()
+    end
+    if result.on == nil
+      result.on = true
+    end
+    if result.properties == nil
+      result.properties = {}
     end
     return result
   end
@@ -28,22 +34,6 @@ Sample = Struct.new(
     return result
   end
 
-  def get_default_amp(sample_defaults)
-    result = sample_defaults.amp
-    if result == nil
-      result = 1
-    end
-    return result
-  end
-
-  def get_default_rate(sample_defaults)
-    result = sample_defaults.rate
-    if result == nil
-      result = 1
-    end
-    return result
-  end
-
   def play(outer_scope, idx, factor, sleeps, effects)
     value = self.value[idx]
     if value.is_a? Integer
@@ -53,12 +43,16 @@ Sample = Struct.new(
     if value.ons == nil
       value.ons = [get_default_on(sample_defaults)].ring
     end
-    if value.amps == nil
-      value.amps = [get_default_amp(sample_defaults)].ring
+    if value.properties == nil
+      value.properties = {}
     end
-    if value.rates == nil
-      value.rates = [get_default_rate(sample_defaults)].ring
-    end
+
+    sample_defaults.properties.keys.each{ |key|
+      if value.properties[key] == nil
+        value.properties[key] = [sample_defaults.properties[key]].ring
+      end
+    }
+
     if value.triggers > 0
       sleeps = do_play(outer_scope, 0, value, factor, sleeps)
     end
@@ -67,7 +61,13 @@ Sample = Struct.new(
 
   def do_play(outer_scope, trigger_idx, step, factor, sleeps)
     if step.ons[trigger_idx]
-      outer_scope.sample self.sample_dir, self.sample_xp, self.sample_idx, amp: step.amps[trigger_idx], rate: step.rates[trigger_idx]
+      properties = {}
+
+      step.properties.keys.each{ |key|
+        properties[key] = step.properties[key][trigger_idx]
+      }
+
+      outer_scope.sample self.sample_dir, self.sample_xp, self.sample_idx, properties
     end
     if (step.triggers - trigger_idx) > 1
       sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, SampleContext.new(trigger_idx + 1, step, factor)), sleeps)
