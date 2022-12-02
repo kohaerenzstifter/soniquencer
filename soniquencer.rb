@@ -1,11 +1,33 @@
 class Instrument
-  class Step < Struct.new(:triggers, :ons, :properties, keyword_init: true)
+  class Step
+    attr_reader :triggers
+    attr_accessor :ons
+    attr_accessor :properties
+    def initialize(**args)
+      @triggers = args[:triggers]
+      @ons = args[:ons]
+      @properties = args[:properties]
+    end
   end
 
-  class Defaults < Struct.new(:on, :properties, keyword_init: true)
+  class Defaults
+    attr_accessor :on
+    attr_accessor :properties
+    def initialize(**args)
+      @on = args[:on]
+      @properties = args[:properties]
+    end
   end
 
-  class Context < Struct.new(:trigger_idx, :step, :factor)
+  class Context
+    attr_reader :trigger_idx
+    attr_reader :step
+    attr_reader :factor
+    def initialize(trigger_idx, step, factor)
+      @trigger_idx = trigger_idx
+      @step = step
+      @factor = factor
+    end
   end
 
   attr_reader :value
