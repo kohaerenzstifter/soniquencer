@@ -25,7 +25,6 @@ Sample = Struct.new(
     return result
   end
 
-
   def get_default_on(sample_defaults)
     result = sample_defaults.on
     if result == nil
@@ -93,7 +92,6 @@ Synth = Struct.new(
   :value,
 :note_length) do
   def play(outer_scope, idx, factor, sleeps, effects)
-    #outer_scope .use_synth :tb303
     if self.value[idx].to_i.to_s == self.value[idx].to_s
       outer_scope.play self.value[idx], release: 0.15
     end
