@@ -1,18 +1,32 @@
+class Step < Struct.new(:triggers, :ons, :properties, keyword_init: true)
+end
+
+class Defaults < Struct.new(:on, :properties, keyword_init: true)
+end
+
+class Context < Struct.new(:trigger_idx, :step, :factor)
+end
+
 Sample = Struct.new(
   :value,
   :note_length,
   :sample_dir,
   :sample_xp,
   :sample_idx,
-:sample_defaults, keyword_init: true) do
+  :defaults,
+  keyword_init: true) do
 
-  SampleStep = Struct.new(:triggers, :ons, :properties, keyword_init: true)
-  SampleDefaults = Struct.new(:on, :properties, keyword_init: true)
+  class SampleStep < Step
+  end
 
-  SampleContext = Struct.new(:trigger_idx, :step, :factor)
+  class SampleDefaults < Defaults
+  end
 
-  def get_sample_defaults()
-    result = self.sample_defaults;
+  class SampleContext < Context
+  end
+
+  def get_defaults()
+    result = self.defaults;
     if result == nil
       result = SampleDefaults.new()
     end
@@ -25,8 +39,8 @@ Sample = Struct.new(
     return result
   end
 
-  def get_default_on(sample_defaults)
-    result = sample_defaults.on
+  def get_default_on(defaults)
+    result = defaults.on
     if result == nil
       result = true
     end
@@ -38,17 +52,17 @@ Sample = Struct.new(
     if value.is_a? Integer
       value = SampleStep.new(triggers: value)
     end
-    sample_defaults = get_sample_defaults()
+    defaults = get_defaults()
     if value.ons == nil
-      value.ons = [get_default_on(sample_defaults)].ring
+      value.ons = [get_default_on(defaults)].ring
     end
     if value.properties == nil
       value.properties = {}
     end
 
-    sample_defaults.properties.keys.each{ |key|
+    defaults.properties.keys.each{ |key|
       if value.properties[key] == nil
-        value.properties[key] = [sample_defaults.properties[key]].ring
+        value.properties[key] = [defaults.properties[key]].ring
       end
     }
 
@@ -80,17 +94,12 @@ Sample = Struct.new(
   end
 end
 
-Definitions = Struct.new(
-  :bpm,
-  :shuffleswing_factor,
-  :shuffleswing_at,
-  :nr_steps_per_bar,
-  :patterns,
-  keyword_init: true)
-
 Synth = Struct.new(
+  :id,
   :value,
-:note_length) do
+  :note_length,
+  :synth,
+  keyword_init: true) do
   def play(outer_scope, idx, factor, sleeps, effects)
     if self.value[idx].to_i.to_s == self.value[idx].to_s
       outer_scope.play self.value[idx], release: 0.15
@@ -108,6 +117,14 @@ ControlFx = Struct.new(:name, :value, :idx, :note_length, keyword_init: true) do
     return sleeps
   end
 end
+
+Definitions = Struct.new(
+  :bpm,
+  :shuffleswing_factor,
+  :shuffleswing_at,
+  :nr_steps_per_bar,
+  :patterns,
+  keyword_init: true)
 
 def add_sleep(add_me, sleeps)
   sleeps.append(add_me)

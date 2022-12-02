@@ -34,10 +34,10 @@ define :get_definitions do ||
       # closed hihat
       Sample.new(value: (ring 0, 1, 0, 1, 0, 1, 0, SampleStep.new(triggers: 4, properties: { amp: (ring 1, 0.5, 0.1) } )),
                  note_length: 8, sample_dir: "/share/waveland1/HIHAT", sample_xp: "", sample_idx: 16,
-                 sample_defaults: SampleDefaults.new( properties: { amp: 1, rate: 0.9 } )),
+                 defaults: SampleDefaults.new( properties: { amp: 1, rate: 0.9 } )),
       # open hihat
       Sample.new(value: (ring 1, 0, 0, 0, 1, 0), note_length: 4, sample_dir: "/share/waveland1/HIHAT", sample_xp: "", sample_idx: 18,
-                 sample_defaults: SampleDefaults.new(properties: { amp: 0.5 } )),
+                 defaults: SampleDefaults.new(properties: { amp: 0.5 } )),
       #Synth.new((ring 54,"",59,61,"",51,""), 16)
   ])
 end
