@@ -1,34 +1,26 @@
-class Step < Struct.new(:triggers, :ons, :properties, keyword_init: true)
-end
-
-class Defaults < Struct.new(:on, :properties, keyword_init: true)
-end
-
-class Context < Struct.new(:trigger_idx, :step, :factor)
-end
-
-Sample = Struct.new(
-  :value,
-  :note_length,
-  :sample_dir,
-  :sample_xp,
-  :sample_idx,
-  :defaults,
-  keyword_init: true) do
-
-  class SampleStep < Step
+class Instrument
+  class Step < Struct.new(:triggers, :ons, :properties, keyword_init: true)
   end
 
-  class SampleDefaults < Defaults
+  class Defaults < Struct.new(:on, :properties, keyword_init: true)
   end
 
-  class SampleContext < Context
+  class Context < Struct.new(:trigger_idx, :step, :factor)
+  end
+
+  attr_reader :value
+  attr_reader :note_length
+  attr_reader :defaults
+  def initialize(**args)
+    @value = args[:value]
+    @note_length = args[:note_length]
+    @defaults = args[:defaults]
   end
 
   def get_defaults()
     result = self.defaults;
     if result == nil
-      result = SampleDefaults.new()
+      result = get_defaults_object()
     end
     if result.on == nil
       result.on = true
@@ -50,7 +42,7 @@ Sample = Struct.new(
   def play(outer_scope, idx, factor, sleeps, effects)
     value = self.value[idx]
     if value.is_a? Integer
-      value = SampleStep.new(triggers: value)
+      value = get_step(value)
     end
     defaults = get_defaults()
     if value.ons == nil
@@ -80,10 +72,10 @@ Sample = Struct.new(
         properties[key] = step.properties[key][trigger_idx]
       }
 
-      outer_scope.sample self.sample_dir, self.sample_xp, self.sample_idx, properties
+      sound(outer_scope, properties)
     end
     if (step.triggers - trigger_idx) > 1
-      sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, SampleContext.new(trigger_idx + 1, step, factor)), sleeps)
+      sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, get_context(trigger_idx + 1, step, factor)), sleeps)
     end
     return sleeps
   end
@@ -92,6 +84,44 @@ Sample = Struct.new(
     sleeps = do_play(outer_scope, sample_context.trigger_idx, sample_context.step, sample_context.factor, sleeps)
     return sleeps
   end
+end
+
+class Sample < Instrument
+  attr_reader :sample_dir
+  attr_reader :sample_xp
+  attr_reader :sample_idx
+  def initialize(**args)
+    super
+    @sample_dir = args[:sample_dir]
+    @sample_xp = args[:sample_xp]
+    @sample_idx = args[:sample_idx]
+  end
+
+  class Step < Instrument::Step
+  end
+
+  class Defaults < Instrument::Defaults
+  end
+
+  class Context < Instrument::Context
+  end
+
+  def get_defaults_object()
+    return Defaults.new()
+  end
+
+  def get_context(trigger_idx, step, factor)
+    return Context.new(trigger_idx, step, factor)
+  end
+
+  def get_step(value)
+    return Step.new(triggers: value)
+  end
+
+  def sound(outer_scope, properties)
+    outer_scope.sample self.sample_dir, self.sample_xp, self.sample_idx, properties
+  end
+
 end
 
 Synth = Struct.new(
@@ -172,7 +202,6 @@ def perform_step(idx, pattern, factor, definitions, sleeps, effects)
 end
 
 def do_steps_thread(idx, definitions, sleeps, effects, sleeper)
-  defaultSampleStep = SampleStep.new(triggers: 1)
   nr_steps_per_bar = definitions.nr_steps_per_bar
   step_in_bar = idx % nr_steps_per_bar
   shuffleswing_factor = definitions.shuffleswing_factor

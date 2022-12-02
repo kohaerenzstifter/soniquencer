@@ -21,23 +21,23 @@ define :get_definitions do ||
       ControlFx.new(idx: 0, name: "cutoff", value: (ring 0,20,40,60,80,100,120,100,80,60,40,20), note_length: 8),
       ControlFx.new(idx: 0, name: "res", value: (ring 0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,0.8,0.7,0.6,0.5,0.4,0.3,0.2,0.1), note_length: 8),
       # base drum
-      #Sample.new(value: (ring SampleStep.new(triggers: 1, rate: (ring 30), properties: { amp: (ring 0.5) } ),
-      #                   SampleStep.new(triggers: 1, properties: { amp: (ring 0.5), rate: (ring 15) } ),
-      #                   SampleStep.new(triggers: 1, properties: { amp: (ring 0.5), rate: (ring 15) } ),
-      #                   SampleStep.new(triggers: 1, properties: { amp: (ring 0.5), rate: (ring 15) } )),
+      #Sample.new(value: (ring Sample::Step.new(triggers: 1, rate: (ring 30), properties: { amp: (ring 0.5) } ),
+      #                   Sample::Step.new(triggers: 1, properties: { amp: (ring 0.5), rate: (ring 15) } ),
+      #                   Sample::Step.new(triggers: 1, properties: { amp: (ring 0.5), rate: (ring 15) } ),
+      #                   Sample::Step.new(triggers: 1, properties: { amp: (ring 0.5), rate: (ring 15) } )),
       #           note_length: 4, sample_dir: "~/sonic-pi/etc/samples", sample_xp: "bd_",sample_idx: 1),
-      Sample.new(value: (ring SampleStep.new(triggers: 1, properties: { rate: (ring 1), amp: (ring 1) }, ons: (ring true))),
+      Sample.new(value: (ring Sample::Step.new(triggers: 1, properties: { rate: (ring 1), amp: (ring 1) }, ons: (ring true))),
                  note_length: 4, sample_dir: "~/sonic-pi/etc/samples", sample_xp: "bd_", sample_idx: 1),
       # snare drum
-      Sample.new(value: (ring 0, 1, 0, 2, 0, SampleStep.new(triggers: 3, properties: { amp: (ring 0.1, 1, 0.5) } )),
+      Sample.new(value: (ring 0, 1, 0, 2, 0, Sample::Step.new(triggers: 3, properties: { amp: (ring 0.1, 1, 0.5) } )),
                  note_length: 4, sample_dir: "~/sonic-pi/etc/samples", sample_xp: "sn_", sample_idx: 1),
       # closed hihat
-      Sample.new(value: (ring 0, 1, 0, 1, 0, 1, 0, SampleStep.new(triggers: 4, properties: { amp: (ring 1, 0.5, 0.1) } )),
+      Sample.new(value: (ring 0, 1, 0, 1, 0, 1, 0, Sample::Step.new(triggers: 4, properties: { amp: (ring 1, 0.5, 0.1) } )),
                  note_length: 8, sample_dir: "/share/waveland1/HIHAT", sample_xp: "", sample_idx: 16,
-                 defaults: SampleDefaults.new( properties: { amp: 1, rate: 0.9 } )),
+                 defaults: Sample::Defaults.new( properties: { amp: 1, rate: 0.9 } )),
       # open hihat
       Sample.new(value: (ring 1, 0, 0, 0, 1, 0), note_length: 4, sample_dir: "/share/waveland1/HIHAT", sample_xp: "", sample_idx: 18,
-                 defaults: SampleDefaults.new(properties: { amp: 0.5 } )),
+                 defaults: Sample::Defaults.new(properties: { amp: 0.5 } )),
       #Synth.new((ring 54,"",59,61,"",51,""), 16)
   ])
 end
@@ -53,7 +53,7 @@ define :get_definitionsX do ||
     nr_steps_per_bar: $nr_steps_per_bar,
     patterns: [
       # base drum
-      Sample.new(value: (ring SampleStep.new(triggers: 3, properties: { rate: (ring 1), amp: (ring 1, 0.3, 0.3) }, ons: (ring false, true, true))),
+      Sample.new(value: (ring Sample::Step.new(triggers: 3, properties: { rate: (ring 1), amp: (ring 1, 0.3, 0.3) }, ons: (ring false, true, true))),
                  note_length: 4, sample_dir: "~/sonic-pi/etc/samples", sample_xp: "bd_",sample_idx: 1)
   ])
 end
