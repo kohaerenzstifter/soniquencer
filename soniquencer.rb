@@ -50,6 +50,7 @@ class Instrument
     if result.properties == nil
       result.properties = {}
     end
+    result = sanitize_defaults(result);
     return result
   end
 
@@ -132,6 +133,10 @@ class Sample < Instrument
     return Defaults.new()
   end
 
+  def sanitize_defaults(result)
+    return result
+  end
+
   def get_context(trigger_idx, step, factor)
     return Context.new(trigger_idx, step, factor)
   end
@@ -143,20 +148,45 @@ class Sample < Instrument
   def sound(outer_scope, properties)
     outer_scope.sample self.sample_dir, self.sample_xp, self.sample_idx, properties
   end
-
 end
 
-Synth = Struct.new(
-  :id,
-  :value,
-  :note_length,
-  :synth,
-  keyword_init: true) do
-  def play(outer_scope, idx, factor, sleeps, effects)
-    if self.value[idx].to_i.to_s == self.value[idx].to_s
-      outer_scope.play self.value[idx], release: 0.15
+class Synth < Instrument
+  attr_reader :instrument
+  def initialize(**args)
+    super
+    @instrument = args[:instrument]
+  end
+
+  class Step < Instrument::Step
+  end
+
+  class Defaults < Instrument::Defaults
+  end
+
+  class Context < Instrument::Context
+  end
+
+  def get_defaults_object()
+    return Defaults.new()
+  end
+
+  def sanitize_defaults(result)
+    if result.properties[:tonhoehe] == nil
+      result.properties[:tonhoehe] = 60
     end
-    return sleeps
+    return result
+  end
+
+  def get_context(trigger_idx, step, factor)
+    return Context.new(trigger_idx, step, factor)
+  end
+
+  def get_step(value)
+    return Step.new(triggers: value)
+  end
+
+  def sound(outer_scope, properties)
+    outer_scope.play properties[:tonhoehe], properties
   end
 end
 
