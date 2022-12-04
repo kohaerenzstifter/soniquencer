@@ -152,9 +152,11 @@ end
 
 class Synth < Instrument
   attr_reader :instrument
+  attr_reader :id
   def initialize(**args)
     super
     @instrument = args[:instrument]
+    @id = args[:id]
   end
 
   class Step < Instrument::Step
@@ -171,8 +173,8 @@ class Synth < Instrument
   end
 
   def sanitize_defaults(result)
-    if result.properties[:tonhoehe] == nil
-      result.properties[:tonhoehe] = 60
+    if result.properties[:note] == nil
+      result.properties[:note] = 60
     end
     return result
   end
@@ -186,14 +188,29 @@ class Synth < Instrument
   end
 
   def sound(outer_scope, properties)
-    outer_scope.play properties[:tonhoehe], properties
+    gleiting = nil
+    gleit = properties[:gleit]
+    if gleit != nil && gleit && @id != nil
+      gleiting = outer_scope.get[@id.to_sym]
+    end
+    if gleiting == nil
+      if @instrument != nil
+        outer_scope.use_synth @instrument
+      end
+      store = outer_scope.play properties[:note], properties
+      if @id != nil
+        outer_scope.set @id.to_sym, store
+      end
+    else
+      outer_scope.control gleiting, properties
+    end
   end
 end
 
 ControlFx = Struct.new(:name, :value, :idx, :note_length, keyword_init: true) do
   def play(outer_scope, idx, factor, sleeps, effects)
     value = self.value[idx]
-    if value >= 0
+    if value >= 0 && self.idx < effects.size
       outer_scope.control(effects[self.idx], name.to_sym => value)
     end
     return sleeps
