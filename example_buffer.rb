@@ -34,14 +34,14 @@ define :get_definitions do ||
             Synth::Step.new(
               triggers: $triggers,
               ons: (ring true),
+              gleits: (ring true),
               properties: {
                 note: chord(:E1, :madd13, num_octaves:$num_octaves).shuffle,
-                gleit: (ring false)
               }
             ),
           ),
         defaults:
-          Sample::Defaults.new(
+          Synth::Defaults.new(
             properties: {
               cutoff_release: $release,
               release: $release,
@@ -57,27 +57,27 @@ define :get_definitions do ||
       #  # id must be unique across all synths!!!
       #  id: "fmslfds",
       #  value: (ring
-      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5, :madd13, num_octaves:$num_octaves).shuffle, on: (ring true), gleit: (ring false, true, true, true, false) } ),
+      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5, :madd13, num_octaves:$num_octaves).shuffle }, ons: (ring true), gleits: (ring false, true, true, true, false) ),
       #          ),
-      #  defaults: Sample::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
+      #  defaults: Synth::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
       #  note_length: $note_length),
       #Synth.new(
       #  instrument: :hoover,
       #  # id must be unique across all synths!!!
       #  id: "dsfds",
       #  value: (ring
-      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5+7, :madd13, num_octaves:$num_octaves).shuffle, on: (ring true), gleit: (ring false, true, true, true, false) } ),
+      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5+7, :madd13, num_octaves:$num_octaves).shuffle }, gleits: (ring false, true, true, true, false), ons: (ring true) ),
       #          ),
-      #  defaults: Sample::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
+      #  defaults: Synth::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
       #  note_length: $note_length),
       #Synth.new(
       #  instrument: :hoover,
       #  # id must be unique across all synths!!!
       #  id: "dsfdss",
       #  value: (ring
-      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5-3, :madd13, num_octaves:$num_octaves).shuffle, on: (ring true), gleit: (ring false, true, true, true, false) } ),
+      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5-3, :madd13, num_octaves:$num_octaves).shuffle }, ons: (ring true), gleits: (ring false, true, true, true, false) ),
       #          ),
-      #  defaults: Sample::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
+      #  defaults: Synth::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
       #  note_length: $note_length),
       ControlFx.new(idx: 0, name: "mix", value: (ring 0.1), note_length: 1),
       ControlFx.new(idx: 1, name: "mix", value: (ring 0.05), note_length: 1),

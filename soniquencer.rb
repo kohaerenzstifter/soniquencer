@@ -54,24 +54,28 @@ class Instrument
     return result
   end
 
-  def play(outer_scope, idx, factor, sleeps, effects)
-    value = self.value[idx]
-    if value.is_a? Integer
-      value = get_step(value)
+  def get_step(idx, defaults)
+    result = self.value[idx]
+    if result.is_a? Integer
+      result = get_step_from_value(result)
     end
-    defaults = get_defaults()
-    if value.ons == nil
-      value.ons = defaults.on != nil ? [defaults.on].ring : [true].ring
+    if result.ons == nil
+      result.ons = defaults.on != nil ? [defaults.on].ring : [true].ring
     end
-    if value.properties == nil
-      value.properties = defaults.properties
+    if result.properties == nil
+      result.properties = defaults.properties
     else
       defaults.properties.keys.each{ |key|
-        if value.properties[key] == nil
-          value.properties[key] = [defaults.properties[key]].ring
+        if result.properties[key] == nil
+          result.properties[key] = [defaults.properties[key]].ring
         end
       }
     end
+    return result
+  end
+
+  def play(outer_scope, idx, factor, sleeps, effects)
+    value = get_step(idx, get_defaults())
 
     if value.triggers > 0
       sleeps = do_play(outer_scope, 0, value, factor, sleeps)
@@ -79,13 +83,17 @@ class Instrument
     return sleeps
   end
 
+  def prepareToSound(step, trigger_idx)
+    result = {}
+    step.properties.keys.each{ |key|
+      result[key] = step.properties[key][trigger_idx]
+    }
+    return result
+  end
+
   def do_play(outer_scope, trigger_idx, step, factor, sleeps)
     if step.ons[trigger_idx]
-      properties = {}
-
-      step.properties.keys.each{ |key|
-        properties[key] = step.properties[key][trigger_idx]
-      }
+      properties = prepareToSound(step, trigger_idx)
 
       sound(outer_scope, properties)
     end
@@ -133,7 +141,7 @@ class Sample < Instrument
     return Context.new(trigger_idx, step, factor)
   end
 
-  def get_step(value)
+  def get_step_from_value(value)
     return Step.new(triggers: value)
   end
 
@@ -149,12 +157,23 @@ class Synth < Instrument
     super
     @instrument = args[:instrument]
     @id = args[:id]
+    @gleit = false
   end
 
   class Step < Instrument::Step
+    attr_accessor :gleits
+    def initialize(**args)
+      super
+      @gleits = args[:gleits]
+    end
   end
 
   class Defaults < Instrument::Defaults
+    attr_accessor :gleit
+    def initialize(**args)
+      super
+      @gleit = args[:gleit]
+    end
   end
 
   class Context < Instrument::Context
@@ -168,8 +187,8 @@ class Synth < Instrument
     if result.properties[:note] == nil
       result.properties[:note] = 60
     end
-    if result.properties[:gleit] == nil
-      result.properties[:gleit] = false
+    if result.gleit == nil
+      result.gleit = false
     end
     return result
   end
@@ -178,15 +197,30 @@ class Synth < Instrument
     return Context.new(trigger_idx, step, factor)
   end
 
-  def get_step(value)
+  def get_step(idx, defaults)
+    result = super
+
+    if result.gleits == nil
+      result.gleits = defaults.gleit != nil ? [defaults.gleit].ring : [false].ring
+    end
+
+    return result
+  end
+
+  def get_step_from_value(value)
     return Step.new(triggers: value)
+  end
+
+  def prepareToSound(step, trigger_idx)
+    result = super
+    gleit = step.gleits[trigger_idx]
+    return result
   end
 
   def sound(outer_scope, properties)
     gleiting = nil
     active = outer_scope.get[@id.to_sym]
-    gleit = properties[:gleit]
-    if gleit && @id != nil
+    if @gleit && @id != nil
       gleiting = active
     end
     if gleiting == nil
