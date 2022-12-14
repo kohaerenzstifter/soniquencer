@@ -54,14 +54,6 @@ class Instrument
     return result
   end
 
-  def get_default_on(defaults)
-    result = defaults.on
-    if result == nil
-      result = true
-    end
-    return result
-  end
-
   def play(outer_scope, idx, factor, sleeps, effects)
     value = self.value[idx]
     if value.is_a? Integer
@@ -69,17 +61,17 @@ class Instrument
     end
     defaults = get_defaults()
     if value.ons == nil
-      value.ons = [get_default_on(defaults)].ring
+      value.ons = defaults.on != nil ? [defaults.on].ring : [true].ring
     end
     if value.properties == nil
-      value.properties = {}
+      value.properties = defaults.properties
+    else
+      defaults.properties.keys.each{ |key|
+        if value.properties[key] == nil
+          value.properties[key] = [defaults.properties[key]].ring
+        end
+      }
     end
-
-    defaults.properties.keys.each{ |key|
-      if value.properties[key] == nil
-        value.properties[key] = [defaults.properties[key]].ring
-      end
-    }
 
     if value.triggers > 0
       sleeps = do_play(outer_scope, 0, value, factor, sleeps)
@@ -176,6 +168,9 @@ class Synth < Instrument
     if result.properties[:note] == nil
       result.properties[:note] = 60
     end
+    if result.properties[:gleit] == nil
+      result.properties[:gleit] = false
+    end
     return result
   end
 
@@ -189,13 +184,17 @@ class Synth < Instrument
 
   def sound(outer_scope, properties)
     gleiting = nil
+    active = outer_scope.get[@id.to_sym]
     gleit = properties[:gleit]
-    if gleit != nil && gleit && @id != nil
-      gleiting = outer_scope.get[@id.to_sym]
+    if gleit && @id != nil
+      gleiting = active
     end
     if gleiting == nil
       if @instrument != nil
         outer_scope.use_synth @instrument
+      end
+      if active != nil
+        outer_scope.control active, amp: 0
       end
       store = outer_scope.play properties[:note], properties
       if @id != nil
