@@ -20,10 +20,12 @@ class Instrument
   end
 
   class Context
+    attr_reader :idx
     attr_reader :trigger_idx
     attr_reader :step
     attr_reader :factor
-    def initialize(trigger_idx, step, factor)
+    def initialize(idx, trigger_idx, step, factor)
+      @idx = idx
       @trigger_idx = trigger_idx
       @step = step
       @factor = factor
@@ -63,14 +65,13 @@ class Instrument
       result.ons = defaults.on != nil ? [defaults.on].ring : [true].ring
     end
     if result.properties == nil
-      result.properties = defaults.properties
-    else
-      defaults.properties.keys.each{ |key|
-        if result.properties[key] == nil
-          result.properties[key] = [defaults.properties[key]].ring
-        end
-      }
+      result.properties = {}
     end
+    defaults.properties.keys.each{ |key|
+      if result.properties[key] == nil
+        result.properties[key] = [defaults.properties[key]].ring
+      end
+    }
     return result
   end
 
@@ -78,12 +79,12 @@ class Instrument
     value = get_step(idx, get_defaults())
 
     if value.triggers > 0
-      sleeps = do_play(outer_scope, 0, value, factor, sleeps)
+      sleeps = do_play(outer_scope, idx, 0, value, factor, sleeps)
     end
     return sleeps
   end
 
-  def prepareToSound(step, trigger_idx)
+  def prepareToSound(step, idx, trigger_idx)
     result = {}
     step.properties.keys.each{ |key|
       result[key] = step.properties[key][trigger_idx]
@@ -91,20 +92,22 @@ class Instrument
     return result
   end
 
-  def do_play(outer_scope, trigger_idx, step, factor, sleeps)
+  def do_play(outer_scope, idx, trigger_idx, step, factor, sleeps)
     if step.ons[trigger_idx]
-      properties = prepareToSound(step, trigger_idx)
+      properties = prepareToSound(step, idx, trigger_idx)
 
       sound(outer_scope, properties)
     end
     if (step.triggers - trigger_idx) > 1
-      sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, get_context(trigger_idx + 1, step, factor)), sleeps)
+      sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, get_context(idx, trigger_idx + 1, step, factor)), sleeps)
     end
     return sleeps
   end
 
   def callback(outer_scope, sample_context, sleeps)
-    sleeps = do_play(outer_scope, sample_context.trigger_idx, sample_context.step, sample_context.factor, sleeps)
+    sleeps = do_play(outer_scope, sample_context.idx,
+      sample_context.trigger_idx, sample_context.step,
+      sample_context.factor, sleeps)
     return sleeps
   end
 end
@@ -137,8 +140,8 @@ class Sample < Instrument
     return result
   end
 
-  def get_context(trigger_idx, step, factor)
-    return Context.new(trigger_idx, step, factor)
+  def get_context(idx, trigger_idx, step, factor)
+    return Context.new(idx, trigger_idx, step, factor)
   end
 
   def get_step_from_value(value)
@@ -193,8 +196,8 @@ class Synth < Instrument
     return result
   end
 
-  def get_context(trigger_idx, step, factor)
-    return Context.new(trigger_idx, step, factor)
+  def get_context(idx, trigger_idx, step, factor)
+    return Context.new(idx, trigger_idx, step, factor)
   end
 
   def get_step(idx, defaults)
@@ -211,31 +214,56 @@ class Synth < Instrument
     return Step.new(triggers: value)
   end
 
-  def prepareToSound(step, trigger_idx)
+  def get_release(idx, trigger_idx)
+    result = 0
+    loop do
+      step = get_step(idx, get_defaults())
+      length = ((4.0 / @note_length) / step.triggers)
+      if step.gleits[trigger_idx] == false
+        result = result + (length / 2)
+        break
+      end
+      result = result + length
+      trigger_idx = trigger_idx + 1
+      if trigger_idx == step.triggers
+        idx = idx + 1
+        if idx == self.value.length
+          break
+        end
+        trigger_idx = 0
+      end
+    end
+
+    return result
+  end
+
+  def prepareToSound(step, idx, trigger_idx)
     result = super
-    gleit = step.gleits[trigger_idx]
+    @gleit = (step.gleits[trigger_idx]) && (@id != nil)
+    if result[:release] == nil
+      result[:release] = get_release(idx, trigger_idx)
+    end
     return result
   end
 
   def sound(outer_scope, properties)
-    gleiting = nil
-    active = outer_scope.get[@id.to_sym]
-    if @gleit && @id != nil
-      gleiting = active
+    active = nil
+    if @id != nil
+      active = outer_scope.get[@id.to_sym]
     end
-    if gleiting == nil
+    if active != nil
+      if @gleit == false
+        outer_scope.set @id.to_sym, nil
+      end
+      outer_scope.control active, properties
+    else
       if @instrument != nil
         outer_scope.use_synth @instrument
       end
-      if active != nil
-        outer_scope.control active, amp: 0
-      end
       store = outer_scope.play properties[:note], properties
-      if @id != nil
+      if @gleit == true
         outer_scope.set @id.to_sym, store
       end
-    else
-      outer_scope.control gleiting, properties
     end
   end
 end
