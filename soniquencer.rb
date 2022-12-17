@@ -24,11 +24,13 @@ class Instrument
     attr_reader :trigger_idx
     attr_reader :step
     attr_reader :factor
-    def initialize(idx, trigger_idx, step, factor)
+    attr_reader :definitions
+    def initialize(idx, trigger_idx, step, factor, definitions)
       @idx = idx
       @trigger_idx = trigger_idx
       @step = step
       @factor = factor
+      @definitions = definitions
     end
   end
 
@@ -75,16 +77,16 @@ class Instrument
     return result
   end
 
-  def play(outer_scope, idx, factor, sleeps, effects)
+  def play(outer_scope, idx, factor, sleeps, effects, definitions)
     value = get_step(idx, get_defaults())
 
     if value.triggers > 0
-      sleeps = do_play(outer_scope, idx, 0, value, factor, sleeps)
+      sleeps = do_play(outer_scope, idx, 0, value, factor, sleeps, definitions)
     end
     return sleeps
   end
 
-  def prepareToSound(step, idx, trigger_idx)
+  def prepareToSound(step, idx, trigger_idx, definitions)
     result = {}
     step.properties.keys.each{ |key|
       result[key] = step.properties[key][trigger_idx]
@@ -92,14 +94,14 @@ class Instrument
     return result
   end
 
-  def do_play(outer_scope, idx, trigger_idx, step, factor, sleeps)
+  def do_play(outer_scope, idx, trigger_idx, step, factor, sleeps, definitions)
     if step.ons[trigger_idx]
-      properties = prepareToSound(step, idx, trigger_idx)
+      properties = prepareToSound(step, idx, trigger_idx, definitions)
 
       sound(outer_scope, properties)
     end
     if (step.triggers - trigger_idx) > 1
-      sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, get_context(idx, trigger_idx + 1, step, factor)), sleeps)
+      sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, get_context(idx, trigger_idx + 1, step, factor, definitions)), sleeps)
     end
     return sleeps
   end
@@ -107,7 +109,7 @@ class Instrument
   def callback(outer_scope, sample_context, sleeps)
     sleeps = do_play(outer_scope, sample_context.idx,
       sample_context.trigger_idx, sample_context.step,
-      sample_context.factor, sleeps)
+      sample_context.factor, sleeps, sample_context.definitions)
     return sleeps
   end
 end
@@ -140,8 +142,8 @@ class Sample < Instrument
     return result
   end
 
-  def get_context(idx, trigger_idx, step, factor)
-    return Context.new(idx, trigger_idx, step, factor)
+  def get_context(idx, trigger_idx, step, factor, definitions)
+    return Context.new(idx, trigger_idx, step, factor, definitions)
   end
 
   def get_step_from_value(value)
@@ -160,22 +162,22 @@ class Synth < Instrument
     super
     @instrument = args[:instrument]
     @id = args[:id]
-    @gleit = false
+    @glide = false
   end
 
   class Step < Instrument::Step
-    attr_accessor :gleits
+    attr_accessor :glides
     def initialize(**args)
       super
-      @gleits = args[:gleits]
+      @glides = args[:glides]
     end
   end
 
   class Defaults < Instrument::Defaults
-    attr_accessor :gleit
+    attr_accessor :glide
     def initialize(**args)
       super
-      @gleit = args[:gleit]
+      @glide = args[:glide]
     end
   end
 
@@ -190,21 +192,21 @@ class Synth < Instrument
     if result.properties[:note] == nil
       result.properties[:note] = 60
     end
-    if result.gleit == nil
-      result.gleit = false
+    if result.glide == nil
+      result.glide = false
     end
     return result
   end
 
-  def get_context(idx, trigger_idx, step, factor)
-    return Context.new(idx, trigger_idx, step, factor)
+  def get_context(idx, trigger_idx, step, factor, definitions)
+    return Context.new(idx, trigger_idx, step, factor, definitions)
   end
 
   def get_step(idx, defaults)
     result = super
 
-    if result.gleits == nil
-      result.gleits = defaults.gleit != nil ? [defaults.gleit].ring : [false].ring
+    if result.glides == nil
+      result.glides = defaults.glide != nil ? [defaults.glide].ring : [false].ring
     end
 
     return result
@@ -214,12 +216,23 @@ class Synth < Instrument
     return Step.new(triggers: value)
   end
 
-  def get_release(idx, trigger_idx)
+  def get_factor(idx, definitions)
+    step_in_bar = idx % @note_length
+    shuffleswing_factor = definitions.shuffleswing_factor
+    result = shuffleswing_factor
+    if (step_in_bar / ((@note_length + 0.0) / definitions.shuffleswing_at)) % 2 == 0
+      result = 2 - shuffleswing_factor
+    end
+    return result
+  end
+
+  def get_release(idx, trigger_idx, definitions)
     result = 0
+    factor = get_factor(idx, definitions)
     loop do
       step = get_step(idx, get_defaults())
       length = ((4.0 / @note_length) / step.triggers)
-      if step.gleits[trigger_idx] == false
+      if step.glides[trigger_idx] == false
         result = result + (length / 2)
         break
       end
@@ -230,6 +243,7 @@ class Synth < Instrument
         if idx == self.value.length
           break
         end
+        factor = get_factor(idx, definitions)
         trigger_idx = 0
       end
     end
@@ -237,11 +251,11 @@ class Synth < Instrument
     return result
   end
 
-  def prepareToSound(step, idx, trigger_idx)
+  def prepareToSound(step, idx, trigger_idx, definitions)
     result = super
-    @gleit = (step.gleits[trigger_idx]) && (@id != nil)
+    @glide = (step.glides[trigger_idx]) && (@id != nil)
     if result[:release] == nil
-      result[:release] = get_release(idx, trigger_idx)
+      result[:release] = get_release(idx, trigger_idx, definitions)
     end
     return result
   end
@@ -252,7 +266,7 @@ class Synth < Instrument
       active = outer_scope.get[@id.to_sym]
     end
     if active != nil
-      if @gleit == false
+      if @glide == false
         outer_scope.set @id.to_sym, nil
       end
       outer_scope.control active, properties
@@ -261,7 +275,7 @@ class Synth < Instrument
         outer_scope.use_synth @instrument
       end
       store = outer_scope.play properties[:note], properties
-      if @gleit == true
+      if @glide == true
         outer_scope.set @id.to_sym, store
       end
     end
@@ -269,7 +283,7 @@ class Synth < Instrument
 end
 
 ControlFx = Struct.new(:name, :value, :idx, :note_length, keyword_init: true) do
-  def play(outer_scope, idx, factor, sleeps, effects)
+  def play(outer_scope, idx, factor, sleeps, effects, defintions)
     value = self.value[idx]
     if value >= 0 && self.idx < effects.size
       outer_scope.control(effects[self.idx], name.to_sym => value)
@@ -326,7 +340,7 @@ def perform_step(idx, pattern, factor, definitions, sleeps, effects)
   pattern_factor = definitions.nr_steps_per_bar / pattern.note_length
   if idx % pattern_factor == 0
     pattern_idx = idx / pattern_factor
-    sleeps = pattern.play self, pattern_idx, factor, sleeps, effects
+    sleeps = pattern.play self, pattern_idx, factor, sleeps, effects, definitions
   end
   return sleeps
 end

@@ -33,7 +33,7 @@ define :get_definitions do ||
             Synth::Step.new(
               triggers: $triggers,
               ons: (ring true),
-              gleits: (ring false, false, true, false),
+              glides: (ring false, false, true, false),
               properties: {
                 note: chord(:E1, :madd13, num_octaves:$num_octaves).shuffle,
               }
@@ -54,7 +54,7 @@ define :get_definitions do ||
       #  # id must be unique across all synths!!!
       #  id: "fmslfds",
       #  value: (ring
-      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5, :madd13, num_octaves:$num_octaves).shuffle }, ons: (ring true), gleits: (ring false, true, true, true, false) ),
+      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5, :madd13, num_octaves:$num_octaves).shuffle }, ons: (ring true), glides: (ring false, true, true, true, false) ),
       #          ),
       #  defaults: Synth::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
       #  note_length: $note_length),
@@ -63,7 +63,7 @@ define :get_definitions do ||
       #  # id must be unique across all synths!!!
       #  id: "dsfds",
       #  value: (ring
-      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5+7, :madd13, num_octaves:$num_octaves).shuffle }, gleits: (ring false, true, true, true, false), ons: (ring true) ),
+      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5+7, :madd13, num_octaves:$num_octaves).shuffle }, glides: (ring false, true, true, true, false), ons: (ring true) ),
       #          ),
       #  defaults: Synth::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
       #  note_length: $note_length),
@@ -72,7 +72,7 @@ define :get_definitions do ||
       #  # id must be unique across all synths!!!
       #  id: "dsfdss",
       #  value: (ring
-      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5-3, :madd13, num_octaves:$num_octaves).shuffle }, ons: (ring true), gleits: (ring false, true, true, true, false) ),
+      #          Synth::Step.new(triggers: $triggers, properties: { note: chord(:E5-3, :madd13, num_octaves:$num_octaves).shuffle }, ons: (ring true), glides: (ring false, true, true, true, false) ),
       #          ),
       #  defaults: Synth::Defaults.new( properties: { cutoff_release: $release, release: $release, note_slide: 0.5, cutoff: 80, amp: 0.1 } ),
       #  note_length: $note_length),
