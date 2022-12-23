@@ -94,11 +94,16 @@ class Instrument
     return result
   end
 
+  def on_off_step(outer_scope)
+  end
+
   def do_play(outer_scope, idx, trigger_idx, step, factor, sleeps, definitions)
     if step.ons[trigger_idx]
       properties = prepareToSound(step, idx, trigger_idx, definitions)
 
       sound(outer_scope, properties)
+    else
+      on_off_step(outer_scope)
     end
     if (step.triggers - trigger_idx) > 1
       sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, get_context(idx, trigger_idx + 1, step, factor, definitions)), sleeps)
@@ -232,6 +237,9 @@ class Synth < Instrument
     loop do
       step = get_step(idx, get_defaults())
       length = ((4.0 / @note_length) / step.triggers)
+      if step.ons[trigger_idx] == false
+        break
+      end
       if step.glides[trigger_idx] == false
         result = result + (length / 2)
         break
@@ -260,14 +268,29 @@ class Synth < Instrument
     return result
   end
 
-  def sound(outer_scope, properties)
-    active = nil
+  def getActive(outer_scope)
+    result = nil
     if @id != nil
       active = outer_scope.get[@id.to_sym]
     end
+    return result
+  end
+
+  def setActive(outer_scope, set_me)
+    if @id != nil
+      outer_scope.set @id.to_sym, set_me
+    end
+  end
+
+  def on_off_step(outer_scope)
+    setActive(outer_scope, nil)
+  end
+
+  def sound(outer_scope, properties)
+    active = getActive(outer_scope)
     if active != nil
       if @glide == false
-        outer_scope.set @id.to_sym, nil
+        setActive(outer_scope, nil)
       end
       outer_scope.control active, properties
     else
@@ -276,7 +299,7 @@ class Synth < Instrument
       end
       store = outer_scope.play properties[:note], properties
       if @glide == true
-        outer_scope.set @id.to_sym, store
+        setActive(outer_scope, store)
       end
     end
   end
