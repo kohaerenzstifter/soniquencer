@@ -305,6 +305,96 @@ class Synth < Instrument
   end
 end
 
+class Tb303 < Synth
+  def initialize(**args)
+    if args[:instrument] == nil
+      args[:instrument] = :tb303
+    end
+    super
+    if args[:accent_amp] == nil
+      args[:accent_amp] = 0.25
+    end
+    if args[:accent_cutoff] == nil
+      args[:accent_cutoff] = 25
+    end
+    @accent = false
+    @accent_amp = args[:accent_amp]
+    @accent_cutoff = args[:accent_cutoff]
+  end
+
+  class Step < Synth::Step
+    attr_accessor :accents
+    def initialize(**args)
+      super
+      @accents = args[:accents]
+    end
+  end
+
+  class Defaults < Synth::Defaults
+    attr_accessor :accent
+    def initialize(**args)
+      super
+      @accent = args[:accent]
+    end
+  end
+
+  class Context < Synth::Context
+  end
+
+  def get_defaults_object()
+    return Defaults.new()
+  end
+
+  def sanitize_defaults(result)
+    if result.properties[:note] == nil
+      result.properties[:note] = 60
+    end
+    if result.accent == nil
+      result.accent = false
+    end
+    return result
+  end
+
+  def get_context(idx, trigger_idx, step, factor, definitions)
+    return Context.new(idx, trigger_idx, step, factor, definitions)
+  end
+
+  def get_step(idx, defaults)
+    result = super
+
+    if result.accents == nil
+      result.accents = defaults.accent != nil ? [defaults.accent].ring : [false].ring
+    end
+
+    return result
+  end
+
+  def prepareToSound(step, idx, trigger_idx, definitions)
+    result = super
+    @accent = step.accents[trigger_idx]
+    return result
+  end
+
+  def sound(outer_scope, properties)
+    active = getActive(outer_scope)
+    if active
+      properties[:cutoff] = nil
+      properties[:amp] = nil
+    else
+      if @accent == true
+        if properties[:cutoff] != nil
+          properties[:cutoff] = properties[:cutoff] + @accent_cutoff
+        end
+        if properties[:amp] != nil
+          properties[:amp] = properties[:amp] + @accent_amp
+        end
+      end
+    end
+    super(outer_scope, properties)
+  end
+
+end
+
 ControlFx = Struct.new(:name, :value, :idx, :note_length, keyword_init: true) do
   def play(outer_scope, idx, factor, sleeps, effects, defintions)
     value = self.value[idx]
