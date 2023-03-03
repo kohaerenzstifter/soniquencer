@@ -86,7 +86,7 @@ class Instrument
     return sleeps
   end
 
-  def prepareToSound(step, idx, trigger_idx, definitions)
+  def prepare_to_sound(step, idx, trigger_idx, definitions)
     result = {}
     step.properties.keys.each{ |key|
       result[key] = step.properties[key][trigger_idx]
@@ -94,16 +94,30 @@ class Instrument
     return result
   end
 
-  def on_off_step(outer_scope)
+  def get_active(id, outer_scope)
+    result = nil
+    if id != nil
+      result = outer_scope.get[id.to_sym]
+    end
+    return result
+  end
+
+  def set_active(id, outer_scope, set_me)
+    if id != nil
+      outer_scope.set id.to_sym, set_me
+    end
+  end
+
+  def upon_off_step(outer_scope)
   end
 
   def do_play(outer_scope, idx, trigger_idx, step, factor, sleeps, definitions)
     if step.ons[trigger_idx]
-      properties = prepareToSound(step, idx, trigger_idx, definitions)
+      properties = prepare_to_sound(step, idx, trigger_idx, definitions)
 
       sound(outer_scope, properties)
     else
-      on_off_step(outer_scope)
+      upon_off_step(outer_scope)
     end
     if (step.triggers - trigger_idx) > 1
       sleeps = add_sleep(Callback.new(((4.0/note_length)/step.triggers) * factor, self, get_context(idx, trigger_idx + 1, step, factor, definitions)), sleeps)
@@ -162,7 +176,7 @@ end
 
 class Synth < Instrument
   attr_reader :instrument
-  attr_reader :id
+#  attr_reader :id
   def initialize(**args)
     super
     @instrument = args[:instrument]
@@ -233,7 +247,7 @@ class Synth < Instrument
 
   def get_release(idx, trigger_idx, definitions)
     result = 0
-    factor = get_factor(idx, definitions)
+#    factor = get_factor(idx, definitions)
     loop do
       step = get_step(idx, get_defaults())
       length = ((4.0 / @note_length) / step.triggers)
@@ -251,7 +265,7 @@ class Synth < Instrument
         if idx == self.value.length
           break
         end
-        factor = get_factor(idx, definitions)
+#        factor = get_factor(idx, definitions)
         trigger_idx = 0
       end
     end
@@ -259,7 +273,7 @@ class Synth < Instrument
     return result
   end
 
-  def prepareToSound(step, idx, trigger_idx, definitions)
+  def prepare_to_sound(step, idx, trigger_idx, definitions)
     result = super
     @glide = (step.glides[trigger_idx]) && (@id != nil)
     if result[:release] == nil
@@ -268,29 +282,15 @@ class Synth < Instrument
     return result
   end
 
-  def getActive(outer_scope)
-    result = nil
-    if @id != nil
-      active = outer_scope.get[@id.to_sym]
-    end
-    return result
-  end
-
-  def setActive(outer_scope, set_me)
-    if @id != nil
-      outer_scope.set @id.to_sym, set_me
-    end
-  end
-
-  def on_off_step(outer_scope)
-    setActive(outer_scope, nil)
+  def upon_off_step(outer_scope)
+    set_active(@id, outer_scope, nil)
   end
 
   def sound(outer_scope, properties)
-    active = getActive(outer_scope)
+    active = get_active(@id, outer_scope)
     if active != nil
       if @glide == false
-        setActive(outer_scope, nil)
+        set_active(@id, outer_scope, nil)
       end
       outer_scope.control active, properties
     else
@@ -299,7 +299,7 @@ class Synth < Instrument
       end
       store = outer_scope.play properties[:note], properties
       if @glide == true
-        setActive(outer_scope, store)
+        set_active(@id, outer_scope, store)
       end
     end
   end
@@ -312,10 +312,10 @@ class Tb303 < Synth
     end
     super
     if args[:accent_amp] == nil
-      args[:accent_amp] = 0.25
+      args[:accent_amp] = 0.3
     end
     if args[:accent_cutoff] == nil
-      args[:accent_cutoff] = 25
+      args[:accent_cutoff] = 0.3
     end
     @accent = false
     @accent_amp = args[:accent_amp]
@@ -349,6 +349,12 @@ class Tb303 < Synth
     if result.properties[:note] == nil
       result.properties[:note] = 60
     end
+    if result.properties[:cutoff] == nil
+      result.properties[:cutoff] = 65
+    end
+    if result.properties[:amp] == nil
+      result.properties[:amp] = 0.5
+    end
     if result.accent == nil
       result.accent = false
     end
@@ -369,30 +375,224 @@ class Tb303 < Synth
     return result
   end
 
-  def prepareToSound(step, idx, trigger_idx, definitions)
+  def prepare_to_sound(step, idx, trigger_idx, definitions)
     result = super
     @accent = step.accents[trigger_idx]
     return result
   end
 
   def sound(outer_scope, properties)
-    active = getActive(outer_scope)
+    active = get_active(@id, outer_scope)
     if active
       properties[:cutoff] = nil
       properties[:amp] = nil
     else
       if @accent == true
-        if properties[:cutoff] != nil
-          properties[:cutoff] = properties[:cutoff] + @accent_cutoff
-        end
-        if properties[:amp] != nil
-          properties[:amp] = properties[:amp] + @accent_amp
-        end
+        properties[:cutoff] = (properties[:cutoff] + (130 - properties[:cutoff]) * @accent_cutoff).ceil()
+        properties[:amp] = properties[:amp] + (1 - properties[:amp]) * @accent_amp
       end
     end
     super(outer_scope, properties)
   end
+end
 
+class MidiSynth < Instrument
+  def initialize(**args)
+    super
+    @glide = false
+  end
+
+  class Step < Instrument::Step
+    attr_accessor :glides
+    def initialize(**args)
+      super
+      @glides = args[:glides]
+    end
+  end
+
+  class Defaults < Instrument::Defaults
+    attr_accessor :glide
+    def initialize(**args)
+      super
+      @glide = args[:glide]
+    end
+  end
+
+  class Context < Instrument::Context
+  end
+
+  def get_defaults_object()
+    return Defaults.new()
+  end
+
+  def sanitize_defaults(result)
+    if result.properties[:note] == nil
+      result.properties[:note] = 60
+    end
+    if result.glide == nil
+      result.glide = false
+    end
+    return result
+  end
+
+  def get_context(idx, trigger_idx, step, factor, definitions)
+    return Context.new(idx, trigger_idx, step, factor, definitions)
+  end
+
+  def get_step(idx, defaults)
+    result = super
+
+    if result.glides == nil
+      result.glides = defaults.glide != nil ? [defaults.glide].ring : [false].ring
+    end
+
+    return result
+  end
+
+  def get_step_from_value(value)
+    return Step.new(triggers: value)
+  end
+
+  def get_factor(idx, definitions)
+    step_in_bar = idx % @note_length
+    shuffleswing_factor = definitions.shuffleswing_factor
+    result = shuffleswing_factor
+    if (step_in_bar / ((@note_length + 0.0) / definitions.shuffleswing_at)) % 2 == 0
+      result = 2 - shuffleswing_factor
+    end
+    return result
+  end
+
+  def get_sustain(idx, trigger_idx, definitions)
+    result = 0
+    factor = get_factor(idx, definitions)
+
+    step = get_step(idx, get_defaults())
+    length = ((4.0 / @note_length) / step.triggers)
+
+    if step.glides[trigger_idx] == false
+      result = (length / 2)
+    else
+      result = length
+      trigger_idx = trigger_idx + 1
+      if trigger_idx == step.triggers
+        idx = idx + 1
+        if idx == self.value.length
+          step = nil
+        else
+          step = get_step(idx, get_defaults())
+        end
+      end
+      if step != nil
+        if step.ons[trigger_idx] == true
+          result = result + (length / 4)
+        end
+      end
+    end
+
+    return result
+  end
+
+  def prepare_to_sound(step, idx, trigger_idx, definitions)
+    result = super
+    @glide = (step.glides[trigger_idx])
+    if result[:sustain] == nil
+      result[:sustain] = get_sustain(idx, trigger_idx, definitions)
+    end
+    return result
+  end
+
+  def sound(outer_scope, properties)
+    outer_scope.midi properties[:note], properties
+  end
+end
+
+class MidiTb303 < MidiSynth
+#  attr_reader :id
+  def initialize(**args)
+    super
+    if args[:accent_velocity] == nil
+      args[:accent_velocity] = 0.5
+    end
+    @accent = false
+    @accent_velocity = args[:accent_velocity]
+    @id = args[:id]
+  end
+
+  class Step < MidiSynth::Step
+    attr_accessor :accents
+    def initialize(**args)
+      super
+      @accents = args[:accents]
+    end
+  end
+
+  class Defaults < MidiSynth::Defaults
+    attr_accessor :accent
+    def initialize(**args)
+      super
+      @accent = args[:accent]
+    end
+  end
+
+  class Context < MidiSynth::Context
+  end
+
+  def get_defaults_object()
+    return Defaults.new()
+  end
+
+  def sanitize_defaults(result)
+    if result.properties[:note] == nil
+      result.properties[:note] = 60
+    end
+    if result.properties[:vel_f] == nil
+      result.properties[:vel_f] = 0.5
+    end
+    if result.accent == nil
+      result.accent = false
+    end
+    return result
+  end
+
+  def get_context(idx, trigger_idx, step, factor, definitions)
+    return Context.new(idx, trigger_idx, step, factor, definitions)
+  end
+
+  def get_step(idx, defaults)
+    result = super
+
+    if result.accents == nil
+      result.accents = defaults.accent != nil ? [defaults.accent].ring : [false].ring
+    end
+
+    return result
+  end
+
+  def prepare_to_sound(step, idx, trigger_idx, definitions)
+    result = super
+    @accent = step.accents[trigger_idx]
+    return result
+  end
+
+  def upon_off_step(outer_scope)
+    set_active(@id, outer_scope, nil)
+  end
+
+  def sound(outer_scope, properties)
+    active = get_active(@id, outer_scope)
+    if active == nil
+      if @accent == true
+        properties[:vel_f] = (properties[:vel_f] + (1.0 - properties[:vel_f]) * @accent_velocity).ceil()
+      end
+    end
+    super(outer_scope, properties)
+    if @glide == true
+      set_active(@id, outer_scope, true)
+    else
+      set_active(@id, outer_scope, nil)
+    end
+  end
 end
 
 ControlFx = Struct.new(:name, :value, :idx, :note_length, keyword_init: true) do
